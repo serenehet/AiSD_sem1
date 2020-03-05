@@ -1,6 +1,10 @@
 #include <iostream>
 using namespace std;
+
+size_t numberOfEqK(const int * const a, size_t n, const int * const b, size_t m, int k);
+
 int main() {
+    // собираем данные
     int n = 0, m = 0, k = 0;
     cin >> n;
     int *a = new int[n];
@@ -13,6 +17,15 @@ int main() {
         cin >> b[i];
     }
     cin >> k;
+    // печатаем решение
+    cout << numberOfEqK(a, n, b, m, k);
+    // освободим память
+    delete[] a;
+    delete[] b;
+    return 0;
+}
+
+size_t numberOfEqK(const int * const a, size_t n, const int * const b, size_t m, int k) {
     int ia = 0;
     int ib = m - 1;
     int counter = 0;
@@ -27,8 +40,5 @@ int main() {
             ++ia;
         }
     }
-    cout << counter;
-    delete[] a;
-    delete[] b;
-    return 0;
+    return counter;
 }
