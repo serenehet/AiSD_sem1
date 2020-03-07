@@ -1,0 +1,3 @@
+/Users/seren/Documents/GitHub/AiSD_sem1/module1_zad2/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/Users/seren/Documents/GitHub/AiSD_sem1/module1_zad2/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/seren/Documents/GitHub/AiSD_sem1/module1_zad2/cmake-build-debug/CMakeFiles/module1_zad2.dir
