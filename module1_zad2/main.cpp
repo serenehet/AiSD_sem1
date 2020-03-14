@@ -1,15 +1,20 @@
-//2_3. Даны два массива неповторяющихся целых чисел, упорядоченные по возрастанию.
-//A[0..n-1] и B[0..m-1]. n >> m. Найдите их пересечение.
-//Требования: Время работы: O(m * log k), где k - позиция элемента B[m-1] в массиве A..
-//В процессе поиска очередного элемента B[i] в массиве A пользуйтесь результатом поиска элемента B[i-1].
-//Внимание! В этой задаче для каждого B[i] сначала нужно определить диапазон для бинарного поиска размером порядка k,
-//а потом уже в нем делать бинарный поиск.
+// Алексеев Сергей АПО-13
+// Модуль 1 задание 2(3)
+
+// Условие:
+// 2_3. Даны два массива неповторяющихся целых чисел, упорядоченные по возрастанию.
+// A[0..n-1] и B[0..m-1]. n >> m. Найдите их пересечение.
+// Требования: Время работы: O(m * log k), где k - позиция элемента B[m-1] в массиве A..
+// В процессе поиска очередного элемента B[i] в массиве A пользуйтесь результатом поиска элемента B[i-1].
+// Внимание! В этой задаче для каждого B[i] сначала нужно определить диапазон для бинарного поиска размером порядка k,
+// а потом уже в нем делать бинарный поиск.
 
 #include <iostream>
 using namespace std;
 
 int binarySearch(const int * arr, int count, int element);
 void printIntersection(const int * arr1, const int * arr2, int size1, int size2);
+int max(int a, int b);
 
 int main() {
     int n, m;
@@ -29,6 +34,13 @@ int main() {
     return 0;
 }
 
+int max(int a, int b) {
+    if (a > b) {
+        return a;
+    }
+    return b;
+}
+
 int binarySearch(const int * arr, int count, int element) {
     int first = 0;
     int last = count;
@@ -44,15 +56,18 @@ int binarySearch(const int * arr, int count, int element) {
 
 void printIntersection(const int * arr1, const int * arr2, const int size1, const int size2) {
     int r = 1;
+    int l = 0;
     for (size_t i = 0; i < size2; ++i) {
         while (arr1[r] < arr2[i] && r < size1) {
             r *= 2;
         }
-        int l = r / 2;
+        l = max(l, r / 2);
         if (r >= size1) {
             r = size1 - 1;
         }
-        if(binarySearch(arr1 + l, r - l + 1, arr2[i]) != -1)
+        if((l = binarySearch(arr1 + l, r - l + 1, arr2[i])) != -1) {
             cout << arr2[i] << " ";
+            ++l;
+        }
     }
 }
