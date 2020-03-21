@@ -1,4 +1,5 @@
 #include <iostream>
+#include <assert.h>
 using namespace std;
 
 template<class T>
@@ -12,12 +13,10 @@ public:
     bool isEmpty();
     MyArr(T * newArray, size_t n);
     ~MyArr();
-    MyArr(const MyArr &other) = delete;
-    MyArr(MyArr &&other) = delete;
-    MyArr& operator=(const MyArr &other) = delete;
-    MyArr& operator=(MyArr &&other) = delete;
     void pushBack(T element);
     T& operator[](size_t index);
+    void deleteLast();
+    T last();
 };
 
 template <typename T, typename Comparator = std::less<T>>
@@ -25,6 +24,7 @@ class MyHeap {
 public:
     explicit MyHeap();
     ~MyHeap();
+    bool isEmpty();
     void insert(T element);
     T extractMax();
     T peekMax();
@@ -32,18 +32,33 @@ private:
     MyArr<T> arr;
     Comparator cmp = Comparator();
     void buildHeap();
-    void siftDown(T i);
-    void siftUp(T i);
+    void siftDown(int i);
+    void siftUp(int i);
 };
 
+bool kek(int a, int b) {
+    return a <= b;
+}
 int main() {
-    MyArr<char> a;
-    for (int i = 0; i < 10; ++i) {
-        a.pushBack(char(i + 97));
+    int n = 0;
+    cin >> n;
+    auto cmp = [](int a, int b) { return a < b;};
+    MyHeap<int, std::greater<int>> heap;
+    for(int i = 0; i < n; ++i) {
+        int temp;
+        cin >> temp;
+        heap.insert(temp);
     }
-    for (int i = 0; i < 10; ++i) {
-        cout << a[i] << " ";
+    int c = 0;
+    while (!heap.isEmpty()) {
+        int temp = heap.extractMax();
+        if (!heap.isEmpty()) {
+            temp += heap.extractMax();
+            heap.insert(temp);
+            c += temp;
+        }
     }
+    cout << c << " ";
     return 0;
 }
 
@@ -100,6 +115,16 @@ bool MyArr<T>::isEmpty() {
     return (size == 0);
 }
 
+template<class T>
+void MyArr<T>::deleteLast() {
+    arr[size--] = 0;
+}
+
+template<class T>
+T MyArr<T>::last() {
+    return arr[size - 1];
+}
+
 // реализация heap
 
 template<typename T, typename Comparator>
@@ -109,18 +134,74 @@ MyHeap<T, Comparator>::MyHeap() {
 }
 
 template<typename T, typename Comparator>
-void MyHeap<T, Comparator>::siftDown(T i) {
+void MyHeap<T, Comparator>::siftDown(int i) {
     int left = 2 * i + 1;
     int right = 2 * i + 2;
-// Ищем большего сына, если такой есть.
+    // Ищем большего сына, если такой есть.
     int largest = i;
-    if( left < arr.size && cmp(arr[left], arr[i]))
+    if( left < arr.size && !cmp(arr[left], arr[i]))
         largest = left;
-    if( right < arr.size && cmp(arr[right], arr[largest]))
+    if( right < arr.size && !cmp(arr[right], arr[largest]))
         largest = right;
-// Если больший сын есть, то проталкиваем корень в него.
+    // Если больший сын есть, то проталкиваем корень в него.
     if( largest != i ) {
         std::swap( arr[i], arr[largest] );
         siftDown(largest);
+    }
+}
+
+template<typename T, typename Comparator>
+void MyHeap<T, Comparator>::buildHeap() {
+    for(int i = arr.size / 2 - 1; i >= 0; --i ) {
+        siftDown(i);
+    }
+}
+
+template<typename T, typename Comparator>
+void MyHeap<T, Comparator>::siftUp(int index) {
+    while( index > 0 ) {
+        int parent = ( index - 1 ) / 2;
+        if(cmp(arr[index], arr[parent]))
+            return;
+        std::swap( arr[index], arr[parent] );
+        index = parent;
+    }
+}
+
+template<typename T, typename Comparator>
+void MyHeap<T, Comparator>::insert(T element) {
+    arr.pushBack(element);
+    siftUp(arr.size - 1);
+}
+
+template<typename T, typename Comparator>
+T MyHeap<T, Comparator>::extractMax() {
+    assert( !arr.isEmpty() );
+    // Запоминаем значение корня.
+    int result = arr[0];
+    // Переносим последний элемент в корень.
+    arr[0] = arr.last();
+    arr.deleteLast();
+    // Вызываем SiftDown для корня.
+    if( !arr.isEmpty() ) {
+        siftDown( 0 );
+    }
+    return result;
+}
+
+template<typename T, typename Comparator>
+T MyHeap<T, Comparator>::peekMax() {
+    return arr[0];
+}
+
+template<typename T, typename Comparator>
+bool MyHeap<T, Comparator>::isEmpty() {
+    return arr.isEmpty();
+}
+
+template<typename T, typename Comparator>
+MyHeap<T, Comparator>::~MyHeap() {
+    while (!arr.isEmpty()) {
+        arr.deleteLast();
     }
 }
