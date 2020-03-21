@@ -1,90 +1,45 @@
 #include <iostream>
-#include <assert.h>
 using namespace std;
 
-class SerenArray {
+template<class T>
+class MyArr {
 private:
     size_t sizeArr;
-    int * arr;
+    T * arr;
 public:
     size_t size;
-    SerenArray();
+    explicit MyArr();
     bool isEmpty();
-    SerenArray(int * newArray, size_t n);
-    ~SerenArray();
-    SerenArray(const SerenArray &other) = delete;
-    SerenArray(SerenArray &&other) = delete;
-    SerenArray& operator=(const SerenArray &other) = delete;
-    SerenArray& operator=(SerenArray &&other) = delete;
-    void pushBack(int element);
-    int& operator[](const int index);
+    MyArr(T * newArray, size_t n);
+    ~MyArr();
+    MyArr(const MyArr &other) = delete;
+    MyArr(MyArr &&other) = delete;
+    MyArr& operator=(const MyArr &other) = delete;
+    MyArr& operator=(MyArr &&other) = delete;
+    void pushBack(T element);
+    T& operator[](size_t index);
 };
 
-class SerenHeap {
+template <typename T, typename Comparator = std::less<T>>
+class MyHeap {
 public:
-    explicit SerenHeap();
-    explicit SerenHeap(const SerenArray & array);
-    ~SerenHeap();
-    void insert( int element ) {
-        arr.pushBack(element);
-        siftUp(arr.size - 1);
-    }
-    // Извлечение максимального элемента.
-    int extractMax() {
-        assert( !arr.IsEmpty() );
-// Запоминаем значение корня.
-        int result = arr[0];
-// Переносим последний элемент в корень.
-        arr[0] = arr.Last();
-        arr.DeleteLast();
-// Вызываем SiftDown для корня.
-        if( !arr.IsEmpty() ) {
-            siftDown( 0 );
-        }
-        return result;
-    }
-    int peekMax() const;
+    explicit MyHeap();
+    ~MyHeap();
+    void insert(T element);
+    T extractMax();
+    T peekMax();
 private:
-    SerenArray arr;
-    void buildHeap() {
-        for( int i = arr.size / 2 - 1; i >= 0; --i ) {
-            siftDown(i);
-        }
-    }
-    void siftUp( int index ){
-        while( index > 0 ) {
-            int parent = ( index - 1 ) / 2;
-            if( arr[index] <= arr[parent] )
-                return;
-            std::swap( arr[index], arr[parent] );
-            index = parent;
-        }
-    }
-    // Построение кучи.
-
-    void siftDown(int i) {
-        int left = 2 * i + 1;
-        int right = 2 * i + 2;
-        //ищем большего сына, если такой есть.
-        int largest = i;
-        if( left < arr.size && arr[left] > arr[i] )
-            largest = left;
-        if( right < arr.size && arr[right] > arr[largest] )
-            largest = right;
-        //Если больший сын есть, то проталкиваем корень в него.
-        if( largest != i ) {
-            std::swap( arr[i], arr[largest] );
-            siftDown( largest );
-        }
-
-    }
+    MyArr<T> arr;
+    Comparator cmp = Comparator();
+    void buildHeap();
+    void siftDown(T i);
+    void siftUp(T i);
 };
-
 
 int main() {
-    SerenArray a;
+    MyArr<char> a;
     for (int i = 0; i < 10; ++i) {
-        a.pushBack(i);
+        a.pushBack(char(i + 97));
     }
     for (int i = 0; i < 10; ++i) {
         cout << a[i] << " ";
@@ -92,13 +47,18 @@ int main() {
     return 0;
 }
 
-SerenArray::SerenArray() {
+// реализация вектора
+
+template<class T>
+MyArr<T>::MyArr() {
     sizeArr = 0;
     size = 0;
     arr = nullptr;
 }
 
-SerenArray::SerenArray(int * newArray, size_t n) {
+
+template<class T>
+MyArr<T>::MyArr(T * newArray, size_t n) {
     sizeArr = 1;
     while (sizeArr < n) {
         sizeArr *= 2;
@@ -111,15 +71,17 @@ SerenArray::SerenArray(int * newArray, size_t n) {
     }
 }
 
-SerenArray::~SerenArray() {
+template<class T>
+MyArr<T>::~MyArr() {
     delete[] arr;
     size = 0;
     sizeArr = 0;
 }
 
-void SerenArray::pushBack(int element) {
+template<class T>
+void MyArr<T>::pushBack(T element) {
     if (size == sizeArr) {
-        int * tempArr = new int[sizeArr * 2];
+        T * tempArr = new T[sizeArr * 2];
         memcpy(tempArr, arr, sizeArr * sizeof(int));
         delete[] arr;
         arr = tempArr;
@@ -128,10 +90,37 @@ void SerenArray::pushBack(int element) {
     arr[size++] = element;
 }
 
-int & SerenArray::operator[](const int index) {
+template<class T>
+T & MyArr<T>::operator[](size_t index) {
     return arr[index];
 }
 
-bool SerenArray::isEmpty() {
+template<class T>
+bool MyArr<T>::isEmpty() {
     return (size == 0);
+}
+
+// реализация heap
+
+template<typename T, typename Comparator>
+MyHeap<T, Comparator>::MyHeap() {
+    arr = MyArr<T>();
+    cmp = Comparator();
+}
+
+template<typename T, typename Comparator>
+void MyHeap<T, Comparator>::siftDown(T i) {
+    int left = 2 * i + 1;
+    int right = 2 * i + 2;
+// Ищем большего сына, если такой есть.
+    int largest = i;
+    if( left < arr.size && cmp(arr[left], arr[i]))
+        largest = left;
+    if( right < arr.size && cmp(arr[right], arr[largest]))
+        largest = right;
+// Если больший сын есть, то проталкиваем корень в него.
+    if( largest != i ) {
+        std::swap( arr[i], arr[largest] );
+        siftDown(largest);
+    }
 }
