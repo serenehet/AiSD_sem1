@@ -1,5 +1,19 @@
+// Алексеев Сергей АПО-13
+// Модуль 1 задание 4(2)
+
+// Условие:
+// Для сложения чисел используется старый компьютер.
+// Время, затрачиваемое на нахождение суммы двух чисел равно их сумме.
+// Таким образом для нахождения суммы чисел 1,2,3 может потребоваться
+// разное время, в зависимости от порядка вычислений.
+// ((1+2)+3) -> 1+2 + 3+3 = 9 ((1+3)+2) -> 1+3 + 4+2 = 10 ((2+3)+1) -> 2+3 + 5+1 = 11
+// Требуется написать программу, которая определяет минимальное время,
+// достаточное для вычисления суммы заданного набора чисел.
+// Требуемое время работы O(n*log(n)).
+
 #include <iostream>
-#include <assert.h>
+#include <cassert>
+#include <cstdio>
 using namespace std;
 
 template<class T>
@@ -10,9 +24,8 @@ private:
 public:
     size_t size;
     explicit MyArr();
-    bool isEmpty();
-    MyArr(T * newArray, size_t n);
     ~MyArr();
+    bool isEmpty();
     void pushBack(T element);
     T& operator[](size_t index);
     void deleteLast();
@@ -23,11 +36,12 @@ template <typename T, typename Comparator = std::less<T>>
 class MyHeap {
 public:
     explicit MyHeap();
+    explicit MyHeap(MyArr<T> &newArr);
     ~MyHeap();
     bool isEmpty();
-    void insert(T element);
-    T extractMax();
-    T peekMax();
+    void add(T element);
+    T extractElem();
+    T peekElem();
 private:
     MyArr<T> arr;
     Comparator cmp = Comparator();
@@ -36,30 +50,36 @@ private:
     void siftUp(int i);
 };
 
-bool kek(int a, int b) {
-    return a <= b;
-}
+int getTimeCalculate(MyArr<int> & arr);
+
 int main() {
-    int n = 0;
+    // получаем данные
+    size_t n;
     cin >> n;
-    auto cmp = [](int a, int b) { return a < b;};
-    MyHeap<int, std::greater<int>> heap;
+    MyArr<int> arr;
     for(int i = 0; i < n; ++i) {
         int temp;
         cin >> temp;
-        heap.insert(temp);
+        arr.pushBack(temp);
     }
+    //печатаем решение
+    cout << getTimeCalculate(arr);
+    return 0;
+}
+
+// решение задачи
+int getTimeCalculate(MyArr<int> & arr) {
+    MyHeap<int, std::greater<>> heap(arr);
     int c = 0;
     while (!heap.isEmpty()) {
-        int temp = heap.extractMax();
+        int temp = heap.extractElem();
         if (!heap.isEmpty()) {
-            temp += heap.extractMax();
-            heap.insert(temp);
+            temp += heap.extractElem();
+            heap.add(temp);
             c += temp;
         }
     }
-    cout << c << " ";
-    return 0;
+    return c;
 }
 
 // реализация вектора
@@ -71,33 +91,25 @@ MyArr<T>::MyArr() {
     arr = nullptr;
 }
 
-
-template<class T>
-MyArr<T>::MyArr(T * newArray, size_t n) {
-    sizeArr = 1;
-    while (sizeArr < n) {
-        sizeArr *= 2;
-    }
-    arr = new int[sizeArr];
-    size = n;
-    memcpy(arr, newArray, n * sizeof(int));
-    for (size_t i = 0; i < size; ++i) {
-        arr[i] = newArray[i];
-    }
-}
-
 template<class T>
 MyArr<T>::~MyArr() {
-    delete[] arr;
     size = 0;
     sizeArr = 0;
+    delete[] arr;
 }
 
 template<class T>
 void MyArr<T>::pushBack(T element) {
+    if (isEmpty()) {
+        size = 1;
+        sizeArr = 1;
+        arr = new T[sizeArr];
+        arr[0] = element;
+        return;
+    }
     if (size == sizeArr) {
         T * tempArr = new T[sizeArr * 2];
-        memcpy(tempArr, arr, sizeArr * sizeof(int));
+        std::copy(arr, arr + sizeArr, tempArr);
         delete[] arr;
         arr = tempArr;
         sizeArr *= 2;
@@ -117,6 +129,7 @@ bool MyArr<T>::isEmpty() {
 
 template<class T>
 void MyArr<T>::deleteLast() {
+    if (isEmpty()) { return; }
     arr[size--] = 0;
 }
 
@@ -169,13 +182,13 @@ void MyHeap<T, Comparator>::siftUp(int index) {
 }
 
 template<typename T, typename Comparator>
-void MyHeap<T, Comparator>::insert(T element) {
+void MyHeap<T, Comparator>::add(T element) {
     arr.pushBack(element);
     siftUp(arr.size - 1);
 }
 
 template<typename T, typename Comparator>
-T MyHeap<T, Comparator>::extractMax() {
+T MyHeap<T, Comparator>::extractElem() {
     assert( !arr.isEmpty() );
     // Запоминаем значение корня.
     int result = arr[0];
@@ -190,7 +203,7 @@ T MyHeap<T, Comparator>::extractMax() {
 }
 
 template<typename T, typename Comparator>
-T MyHeap<T, Comparator>::peekMax() {
+T MyHeap<T, Comparator>::peekElem() {
     return arr[0];
 }
 
@@ -204,4 +217,11 @@ MyHeap<T, Comparator>::~MyHeap() {
     while (!arr.isEmpty()) {
         arr.deleteLast();
     }
+}
+
+template<typename T, typename Comparator>
+MyHeap<T, Comparator>::MyHeap(MyArr<T> &newArr) {
+    cmp = Comparator();
+    arr = newArr;
+    buildHeap();
 }
