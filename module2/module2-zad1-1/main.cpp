@@ -1,3 +1,19 @@
+// Алексеев Сергей АПО-13
+// Модуль 2 задание 1(1)
+
+// Условие:
+// Реализуйте структуру данных типа “множество строк” на основе динамической хеш-таблицы с открытой адресацией.
+// Хранимые строки непустые и состоят из строчных латинских букв.
+// Хеш-функция строки должна быть реализована с помощью вычисления значения многочлена методом Горнера.
+// Начальный размер таблицы должен быть равным 8-ми. Перехеширование выполняйте при добавлении элементов в случае,
+// когда коэффициент заполнения таблицы достигает 3/4.
+// Структура данных должна поддерживать операции добавления строки в множество, удаления строки из множества
+// и проверки принадлежности данной строки множеству.
+
+// 1_1. Для разрешения коллизий используйте квадратичное пробирование.
+// i-ая проба g(k, i)=g(k, i-1) + i (mod m). m - степень двойки.
+
+
 #include <iostream>
 #include <vector>
 #include <string>
@@ -14,8 +30,8 @@ public:
     size_t operator()(const std::string &str)
     {
         size_t hash = 0;
-        for (size_t i = 0; i < str.size(); i++) {
-            hash = hash * prime + str[i];
+        for (const char & i : str) {
+            hash = hash * prime + i;
         }
 
         return hash;
@@ -29,13 +45,8 @@ class HashTable {
 public:
     HashTable(): size(0), arr(DEFAULT_SIZE, nil) {}
     ~HashTable() {
-
-    }
-
-    void print() {
-        for(size_t i = 0; i < arr.size(); ++i) {
-            cout << i << ": " << arr[i] << endl;
-        }
+        size = 0;
+        arr.clear();
     }
 
     bool add(string element) {
@@ -104,12 +115,15 @@ private:
     void reSize(size_t newSize) {
         vector<string> newArr(newSize, nil);
         for(const auto & item : arr) {
-            size_t index = hasher(item) % newArr.size();
-            size_t i = 0;
-            while(newArr[index] != nil) {
-                index = (size_t)(index + 0.5 * i * (i + 1)) % newArr.size();
+            if (item != deleted) {
+                size_t index = hasher(item) % newArr.size();
+                size_t i = 0;
+                while(newArr[index] != nil) {
+                    index = (size_t)(index + 0.5 * i * (i + 1)) % newArr.size();
+                    ++i;
+                }
+                newArr[index] = item;
             }
-            newArr[index] = item;
         }
         arr = newArr;
     }
@@ -117,27 +131,23 @@ private:
 
 int main(int argc, const char * argv[]) {
     HashTable<StringHasher> table;
-    char comand;
+    char cmd;
     string str;
-    while (cin >> comand >> str) {
-        switch (comand) {
+    while (cin >> cmd >> str) {
+        switch (cmd) {
             case '?': {
                 cout << (table.has(str) ? "OK" : "FAIL") << endl;
-//                table.print();
                 break;
             }
             case '+': {
                 cout << (table.add(str) ? "OK" : "FAIL") << endl;
-//                table.print();
                 break;
             }
             case '-': {
                 cout << (table.remove(str) ? "OK" : "FAIL") << endl;
-//                table.print();
                 break;
             }
         }
     }
-
     return 0;
 }
