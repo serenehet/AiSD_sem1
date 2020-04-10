@@ -147,6 +147,8 @@ int main(int argc, const char * argv[]) {
                 cout << (table.remove(str) ? "OK" : "FAIL") << endl;
                 break;
             }
+            default:
+                break;
         }
     }
     return 0;
