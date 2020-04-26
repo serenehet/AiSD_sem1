@@ -1,13 +1,29 @@
-#include <iostream>
+// Алексеев Сергей АПО-13
+// Модуль 2 задание 4(1)
 
-template <typename T>
+
+// Условие:
+// В одной военной части решили построить в одну шеренгу по росту.
+// Т.к. часть была далеко не образцовая, то солдаты часто приходили не вовремя,
+// а то их и вовсе приходилось выгонять из шеренги за плохо начищенные сапоги.
+// Однако солдаты в процессе прихода и ухода должны были всегда быть выстроены по росту – сначала самые высокие,
+// а в конце – самые низкие. За расстановку солдат отвечал прапорщик,
+// который заметил интересную особенность – все солдаты в части разного роста. Ваша задача состоит в том,
+// чтобы помочь прапорщику правильно расставлять солдат, а именно для каждого приходящего солдата указывать,
+// перед каким солдатом в строе он должен становится. Требуемая скорость выполнения команды - O(log n).
+
+
+#include <iostream>
+#include <string>
+
+template <typename T, typename Comparator = std::less<T>>
 class AvlTree {
     struct Node {
-        Node(const T &data) : data(data), left(nullptr), right(nullptr), height(1), nChild(1) {}
+        Node(const T &data) : data(data), left(nullptr), right(nullptr), height(1), number(1) {}
         T data;
         Node *left, *right;
         size_t height;
-        size_t nChild;
+        size_t number;
     };
 
 public:
@@ -16,16 +32,12 @@ public:
         destroyTree(root);
     }
 
-    bool has(const T &data) {
+    bool has(const T &data) const {
         Node *tmp = root;
-        while (tmp)
-        {
-            if (tmp->data == data)
-                return true;
-            else if (tmp->data < data)
-                tmp = tmp->right;
-            else
-                tmp = tmp->left;
+        while (tmp) {
+            if (tmp->data == data) { return true; }
+            else if (cmp(tmp->data, data)) { tmp = tmp->right; }
+            else { tmp = tmp->left; }
         }
         return false;
     }
@@ -38,11 +50,11 @@ public:
         size_t tmp = 0;
         Node * node = root;
         while(node != nullptr && node->data != data) {
-            if (node->data < data) {
+            if (cmp(node->data, data)) {
                 node = node->right;
             } else {
                 size_t nRight = 0;
-                if (node->right != nullptr) { nRight = node->right->nChild; }
+                if (node->right != nullptr) { nRight = node->right->number; }
                 tmp += (nRight + 1);
                 node = node->left;
             }
@@ -50,7 +62,7 @@ public:
         if (node == nullptr) { return 0; }
         size_t nRight = 0;
         if (node->right != nullptr) {
-            nRight = node->right->nChild;
+            nRight = node->right->number;
         }
         return tmp + nRight;
     }
@@ -59,32 +71,38 @@ public:
         root = removeInternal(root, data);
     }
 
-    void removeIndex(int pos) {
-        int tmp = pos;
+    void removeIndex(size_t index) {
+        if (root == nullptr && index > root->number) { return; }
+
+        size_t tmp = index;
         Node* node = root;
 
-        while (true){
-            int tmpRightNum = node->right ? node->right->nChild : 0;
+        int nRight = 0;
+        if (node->right != nullptr) {
+            nRight = node->right->number;
+        }
 
-            if (tmpRightNum == tmp){
-                remove(node->data);
-                break;
-            }
-            else if((tmp > tmpRightNum)){
+        while(tmp != nRight) {
+            if (cmp(nRight, tmp)) {
                 node = node->left;
-                tmp -= (tmpRightNum + 1);
-            }
-            else{
+                tmp -= (nRight + 1);
+            } else {
                 node = node->right;
             }
+            nRight = 0;
+            if (node->right != nullptr) {
+                nRight = node->right->number;
+            }
         }
+        remove(node->data);
     }
 
 private:
-    Node *root;
+    Node * root;
+    Comparator cmp;
     void fixHeight(Node *node) {
         node->height = 1 + std::max(getHeight(node->left), getHeight(node->right));
-        node->nChild = getNChild(node->right) + getNChild(node->left) + 1;
+        node->number = getNChild(node->right) + getNChild(node->left) + 1;
     }
 
     size_t getHeight(Node *node) {
@@ -92,7 +110,7 @@ private:
     }
 
     size_t getNChild(Node *node) {
-        return node ? node->nChild : 0;
+        return node ? node->number : 0;
     }
 
     int getBalance(Node *node) {
@@ -122,16 +140,13 @@ private:
     Node* doBalance(Node *node) {
         fixHeight(node);
 
-        switch (getBalance(node))
-        {
-            case 2:
-            {
+        switch (getBalance(node)) {
+            case 2: {
                 if (getBalance(node->right) < 0)
                     node->right = rotateRight(node->right);
                 return rotateLeft(node);
             }
-            case -2:
-            {
+            case -2: {
                 if (getBalance(node->left) > 0)
                     node->left = rotateLeft(node->left);
                 return rotateRight(node);
@@ -154,10 +169,33 @@ private:
         return doBalance(node);
     }
 
+    enum changeDelete {
+        MIN, MAX
+    };
+
+    Node * findAndRemoveMinOrMax(Node * node, Node *& res, changeDelete flag) {
+        switch (flag) {
+            case changeDelete::MIN :
+                if (node->left == nullptr) {
+                    res = node;
+                    return node->right;
+                }
+                node->left = findAndRemoveMinOrMax(node->left, res, flag);
+                return doBalance(node);
+            case changeDelete::MAX :
+                if(node->right == nullptr) {
+                    res = node;
+                    return node->left;
+                }
+                node->right = findAndRemoveMinOrMax(node->right, res, flag);
+                return doBalance(node);
+        }
+    }
+
     Node* addInternal(Node *node, const T &data) {
         if (!node)
             return new Node(data);
-        if (node->data <= data)
+        if (!cmp(data, node->data))
             node->right = addInternal(node->right, data);
         else
             node->left = addInternal(node->left, data);
@@ -167,10 +205,10 @@ private:
     Node* removeInternal(Node *node, const T &data) {
         if (!node)
             return nullptr;
-        if (node->data < data) {
+        if (cmp(node->data, data)) {
             node->right = removeInternal(node->right, data);
         }
-        else if (node->data > data) {
+        else if (cmp(data, node->data)) {
             node->left = removeInternal(node->left, data);
         }
         else {
@@ -182,17 +220,21 @@ private:
             if (!right)
                 return left;
 
-            /*
-             Необходимо сделать 2 модификации:
-             1. Из двух функций findMin и removeMin сделать одну -- findAndRemoveMin, которая делает работу этих двух за один проход.
-             2. Я вместо удаляемого подставляю минимальный элемент из правого поддерева. Вам нужно посмотреть на высоты правого и левого поддеревьев и использовать либо максимальный из левого, либо минимальный из правого, в зависимости от того, какое поддерево более глубокое (брать более глубокое).
-             */
+            Node * work = nullptr;
+            changeDelete flag;
+            if(getHeight(left) >= getHeight(right)) {
+                flag = changeDelete::MAX;
+                Node * tmp = findAndRemoveMinOrMax(left, work, flag);
+                work->left = tmp;
+                work->right = right;
+            } else {
+                flag = changeDelete::MIN;
+                Node * tmp = findAndRemoveMinOrMax(right, work, flag);
+                work->right = tmp;
+                work->left = left;
+            }
 
-            Node *min = findMin(right);
-            min->right = removeMin(right);
-            min->left = left;
-
-            return doBalance(min);
+            return doBalance(work);
         }
         return doBalance(node);
     }
@@ -218,7 +260,7 @@ int main(int argc, const char * argv[]) {
                 std::cout << avlTree.searchIndex(h) << std::endl;
                 break;
             case 2:
-                avlTree.removeIndex((size_t)h);
+                avlTree.removeIndex(h);
                 break;
             default:
                 std::cout << "error";
