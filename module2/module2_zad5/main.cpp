@@ -70,6 +70,29 @@ void recurseSearch(std::map<std::string, std::string> & dict, Node *& head, std:
     }
 }
 
+void setDict(std::map<std::string, std::string> & dict, Node *& head) {
+    std::string path;
+    std::stack<std::pair<Node *, std::string>> st;
+    st.push(std::pair<Node *, std::string>(head, ""));
+    while(!st.empty()) {
+        std::pair<Node *, std::string> info = st.top(); st.pop();
+        Node * node = info.first;
+        std::string p = info.second;
+        if (node->left == nullptr && node->right == nullptr) {
+            dict[node->symbol] = p;
+            path.erase(path.end() - 1);
+        }
+        if (node->left != nullptr) {
+            p += "0";
+            st.push(std::pair<Node *, std::string>(node->left, p));
+        }
+        if (node->right != nullptr) {
+            p += "1";
+            st.push(std::pair<Node *, std::string>(node->right, p));
+        }
+    }
+}
+
 void recurceTreeToBit(Node * head, std::vector<byte> v) {
     
 }
@@ -112,6 +135,7 @@ void Encode(MyInputStream & original, MyOutputStream & compressed) {
     //std::cout << tmp->left->right->symbol << " suaksmc\n";
 
     recurseSearch(dict, tmp, "");
+//    setDict(dict, tmp);
     int dictCount = 0;
     for (const auto & item : dict) {
         std::cout << item.first << " " << item.second << std::endl;
