@@ -7,6 +7,9 @@
 
 //#include "Huffman.h"
 
+
+using namespace std;
+
 typedef unsigned char byte;
 #define interface struct
 
@@ -19,141 +22,310 @@ interface IOutputStream {
     virtual void Write(byte value) = 0;
 };
 
-class MyInputStream : public IInputStream {
-public:
-    std::vector<byte> buffer;
-    int counter;
-    MyInputStream(std::string str) : counter(0) {
-        for(const auto & item : str) {
-            buffer.push_back(item);
+struct VectorInputStream: public IInputStream {
+    VectorInputStream(const string & init) {
+        for(const auto & item : init) {
+            buf.push_back(item);
         }
     }
-    bool Read(byte& value) {
-        if (counter >= buffer.size()) { return false; }
-        value = buffer[counter++];
+    virtual bool Read(byte& value) {
+        if (c == buf.size()) {
+            return false;
+        }
+        value = buf[c++];
         return true;
     }
-
+    vector<byte> buf;
+    size_t c = 0;
 };
 
-class MyOutputStream : public IOutputStream {
+class VectorOutputStream: public IOutputStream {
 public:
-    MyOutputStream() = default;
-    void Write(byte value) {}
+    void Write(byte value) {
+        buf.push_back(value);
+    }
+    vector<byte> buf;
 };
+
+
+class BitWriter
+{
+public:
+    BitWriter() : bitCounter(0) {}
+
+    void WriteBit(unsigned char bit)
+    {
+        if (bitCounter % 8 == 0)
+            buffer.push_back(0);
+        if (bit)
+            buffer[bitCounter/8] |= 1 << (7 - bitCounter % 8);
+        bitCounter++;
+    }
+
+    void WriteByte(unsigned char byte)
+    {
+        if (bitCounter % 8 == 0)
+        {
+            buffer.push_back(byte);
+        }
+        else
+        {
+            int offset = bitCounter % 8;
+            buffer[bitCounter/8] |= byte >> offset;
+            buffer.push_back(byte << (8 - offset));
+        }
+
+        bitCounter += 8;
+    }
+
+    const std::vector<unsigned char> &GetBuffer() const
+    {
+        return buffer;
+    }
+    size_t GetBitCounter() const
+    {
+        return bitCounter;
+    }
+private:
+    std::vector<unsigned char> buffer;
+    size_t bitCounter;
+};
+
+void printBuffer(const std::vector<unsigned char> &buffer)
+{
+    for (auto &v: buffer)
+    {
+        std::cout << std::bitset<8>(v) << "|";
+    }
+    std::cout << std::endl;
+}
+
+class BitReader{
+public:
+    BitReader(const vector<byte> & init) {
+        buffer = init;
+    }
+    int readBit() {
+        byte t1 = buffer[bitCounter / 8];
+        byte t2 = (1 << (7 - bitCounter % 8));
+        byte t3 = t1 & t2;
+        bitCounter++;
+        return (t3) ? 1 : 0;
+    }
+    byte readByte() {
+        if(bitCounter % 8 == 0) {
+            int index = bitCounter / 8;
+            bitCounter += 8;
+            return buffer[index];
+        }
+        byte res;
+        int offset = bitCounter % 8;
+        byte t1 = buffer[bitCounter / 8];
+        t1 = t1 << offset;
+        byte t2 = buffer[(bitCounter / 8) + 1];
+        t2 = t2 >> (8 - offset);
+        bitCounter += 8;
+        return t1 + t2;
+    }
+private:
+    size_t bitCounter = 0;
+    vector<byte> buffer;
+};
+
+
+
 
 
 struct Node {
+    Node(byte byte = 0, int number = 0): left(nullptr), right(nullptr), symbol(byte), n(number) {}
+    byte symbol;
     int n;
     Node * left, * right;
-    std::string symbol;
-    Node(byte sym, int count) :  n(count), left(nullptr), right(nullptr) {
-        symbol += sym;
-    }
-    Node(Node * t1, Node * t2) : left(t1), right(t2), n(t1->n + t2->n) {}
 };
 
+vector<Node *> createHeap(map<byte, int> & m) {
+    vector<Node *> heap;
+    for(const auto & item : m) {
+        Node * node = new Node(item.first, item.second);
+        heap.push_back(node);
+    }
+    make_heap(heap.begin(), heap.end(), [](Node * n1, Node * n2){
+        return n1->n > n2->n;
+    });
+    return heap;
+}
 
-void recurseSearch(std::map<std::string, std::string> & dict, Node *& head, std::string path) {
-    Node * node = head;
-    if (node->left == nullptr && node->right == nullptr) {
-        dict[node->symbol] = path;
+Node * createHaffmanTree(vector<Node *> & v) {
+    while(v.size() > 1) {
+        Node * node1 = v[0];
+        pop_heap(v.begin(), v.end()); v.pop_back();
+        Node * node2 = v[0];
+        pop_heap(v.begin(), v.end()); v.pop_back();
+        Node * combo = new Node();
+        combo->n = node1->n + node2->n;
+        combo->left = node1;
+        combo->right = node2;
+        v.push_back(combo);
+    }
+    return v[0];
+}
+
+map<byte, string> createDict(Node * tree) {
+    stack<pair<Node *, string>> s;
+    string startPath;
+    if (tree->left == nullptr && tree->right == nullptr) {
+        startPath = "1";
+    }
+    s.push(make_pair(tree, startPath));
+    map<byte, string> dict;
+    while(!s.empty()) {
+        pair<Node *, string> info = s.top(); s.pop();
+        if(info.first->left == nullptr && info.first->right == nullptr) {
+            dict[info.first->symbol] = info.second;
+            continue;
+        }
+        if(info.first->left) {
+            s.push(make_pair(info.first->left, info.second + "0"));
+        }
+        if(info.first->right) {
+            s.push(make_pair(info.first->right, info.second + "1"));
+        }
+    }
+    return dict;
+}
+
+void recurseBitTree(Node * node, BitWriter & writer) {
+    if (node == nullptr) {
         return;
     }
-    if (node->right != nullptr) {
-        std::string s = path + "1";
-        recurseSearch(dict, node->right, s);
-    }
-    if (node->left != nullptr) {
-        std::string s = path + "0";
-        recurseSearch(dict, node->left, s);
+    if(node->left == nullptr && node->right == nullptr) {
+        writer.WriteBit(1);
+        writer.WriteByte(node->symbol);
+    } else {
+        recurseBitTree(node->left, writer);
+        recurseBitTree(node->right, writer);
+        writer.WriteBit(0);
     }
 }
 
-void setDict(std::map<std::string, std::string> & dict, Node *& head) {
-    std::string path;
-    std::stack<std::pair<Node *, std::string>> st;
-    st.push(std::pair<Node *, std::string>(head, ""));
-    while(!st.empty()) {
-        std::pair<Node *, std::string> info = st.top(); st.pop();
-        Node * node = info.first;
-        std::string p = info.second;
-        if (node->left == nullptr && node->right == nullptr) {
-            dict[node->symbol] = p;
-            path.erase(path.end() - 1);
+Node * readBitTree(int n, BitReader & reader) {
+    stack<Node *> s;
+    size_t counter = 0;
+    while(counter < n || s.size() != 1) {
+        bool bit = reader.readBit();
+        if(bit) {
+            byte symbol = reader.readByte();
+            Node * node = new Node(symbol);
+            counter++;
+            s.push(node);
+        } else {
+            Node * n1, * n2, * combo;
+            n1 = s.top(); s.pop();
+            n2 = s.top(); s.pop();
+            combo = new Node();
+            combo->right = n1;
+            combo->left = n2;
+            s.push(combo);
         }
-        if (node->left != nullptr) {
-            p += "0";
-            st.push(std::pair<Node *, std::string>(node->left, p));
+    }
+    return s.top();
+}
+
+
+// Метод архивирует данные из потока original
+void Encode(IInputStream& original, IOutputStream& compressed) {
+    vector<byte> src;
+    map<byte, int> counter;
+    byte tmpByte;
+    while(original.Read(tmpByte)) {
+        src.push_back(tmpByte);
+        counter[tmpByte] += 1;
+    }
+    if(src.empty()) { return; }
+    vector<Node *> heap = createHeap(counter);
+    Node * tree = createHaffmanTree(heap);
+    map<byte, string> dict = createDict(tree);
+    BitWriter writer;
+    writer.WriteByte(dict.size());
+
+    int sizeBit = 0;
+    for(const auto & item: dict) {
+        sizeBit += item.second.size() * counter[item.first];
+    }
+    writer.WriteByte(sizeBit);
+
+    recurseBitTree(tree, writer);
+
+    for(const auto & item : src) {
+        string path = dict[item];
+        for(const auto & bitChar: path) {
+            if(bitChar == '1') {
+                writer.WriteBit(1);
+            } else {
+                writer.WriteBit(0);
+            }
         }
-        if (node->right != nullptr) {
-            p += "1";
-            st.push(std::pair<Node *, std::string>(node->right, p));
-        }
+    }
+    // удалить дерево из памяти
+    printBuffer(writer.GetBuffer());
+    for(const auto & item: writer.GetBuffer()) {
+        compressed.Write(item);
     }
 }
-
-void recurceTreeToBit(Node * head, std::vector<byte> v) {
-    
-}
-
-void Encode(MyInputStream & original, MyOutputStream & compressed) {
-    byte value;
-    std::map<char, int> m;
-    std::vector<byte> src;
-    while (original.Read(value)) {
-        src.push_back(value);
-        m[value] += 1;
-    }
-    std::vector<Node *> v;
-    for (const auto & item : m) {
-        //std::cout << item.first << " " << item.second << std::endl;
-        Node * tmp = new Node(item.first, item.second);
-        v.push_back(tmp);
-    }
-    std::make_heap(v.begin(), v.end(), [](Node * t1, Node *t2) {
-        return t1->n > t2->n;
-    });
-//    std::cout << "heap\n";
-//    for (const auto & item : v) {
-//        std::cout << item->symbol << " " << item->n << "\n";
-//    }
-    while(v.size() != 1) {
-        Node * t1 = v.front();
-        std::pop_heap (v.begin(),v.end()); v.pop_back();
-        Node * t2 = v.front();
-        std::pop_heap(v.begin(),v.end()); v.pop_back();
-        Node * tmp = new Node(t1, t2);
-        v.push_back(tmp); std::push_heap(v.begin(),v.end());
-    }
-
-    std::map<std::string, std::string> dict;
-    std::stack<Node *> st;
-    std::stack<Node *> path;
-
-    Node * tmp = v.front();
-    //std::cout << tmp->left->right->symbol << " suaksmc\n";
-
-    recurseSearch(dict, tmp, "");
-//    setDict(dict, tmp);
-    int dictCount = 0;
-    for (const auto & item : dict) {
-        std::cout << item.first << " " << item.second << std::endl;
-        ++dictCount;
-    }
-
-}
-
+// Метод восстанавливает оригинальные данные
 void Decode(IInputStream& compressed, IOutputStream& original) {
-
+    vector<byte> src;
+    byte tmpByte;
+    while(compressed.Read(tmpByte)) {
+        src.push_back(tmpByte);
+    }
+    if(src.empty()) {
+        return;
+    }
+    BitReader reader(src);
+    int nElems = reader.readByte();
+    int sizeBit = reader.readByte();
+    Node * tree = readBitTree(nElems, reader);
+    Node * node = tree;
+    vector<byte> res;
+    map<byte, string> dict = createDict(tree);
+    if (nElems != 1) {
+        for(size_t i = 0; i < sizeBit; ++i) {
+            int bit = reader.readBit();
+            if (bit) {
+                node = node->right;
+            } else {
+                node = node->left;
+            }
+            if(node->left == nullptr && node->right == nullptr) {
+                res.push_back(node->symbol);
+                node = tree;
+            }
+        }
+    } else {
+        for(size_t i = 0; i < sizeBit; ++i) {
+            res.push_back(tree->symbol);
+        }
+    }
+    for(const auto & i : res) {
+        original.Write(i);
+    }
 }
 
 
 int main() {
-    std::string str = "abracadabra";
-    MyInputStream is(str);
-    MyOutputStream os;
-    Encode(is, os);
-    //Encode(is, MyOutputStream());
+    VectorInputStream input("В архиве сохраняйте дерево Хаффмана и код Хаффмана от исходных данных. Дерево Хаффмана требуется хранить эффективно - не более 10 бит на каждый 8-битный символ.\n"
+                            "В контест необходимо отправить .cpp файл содержащий функции Encode, Decode, а также включающий файл Huffman.h. Тестирующая программа выводит размер сжатого файла в процентах от исходного.");
+    VectorOutputStream output;
+    Encode(input, output);
+    string comp;
+    input.buf = output.buf;
+    input.c = 0;
+
+    VectorOutputStream output2;
+    Decode(input, output2);
+    for(const auto & item: output2.buf) {
+        cout << item;
+    }
     return 0;
 }
